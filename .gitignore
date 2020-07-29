@@ -1,0 +1,10 @@
+.idea/
+*.iml
+*.iws
+*.ipr
+
+VERSION
+Version.java
+
+dependency-reduced-pom.xml
+target/
