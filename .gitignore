@@ -8,3 +8,5 @@ Version.java
 
 dependency-reduced-pom.xml
 target/
+
+.venv
