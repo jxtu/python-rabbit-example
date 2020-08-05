@@ -2,13 +2,18 @@ from typing import Callable
 from rabbit import *
 from flask import Flask, escape, request, abort
 from tqdm import tqdm
+from cord_index import *
 import sys
 import json
 import numpy as np
 
-EMBEDDINGS_PATH = 'cord_19_embeddings_2020-06-16.csv'
+EMBEDDINGS_PATH = 'embeddings/cord_19_embeddings_2020-06-16.csv'
+METADATA_PATH = 'embeddings/metadata.csv'
 MAX_NUM_SIMILAR = 100
 DEFAULT_NUM_SIMILAR = 10
+
+
+
 
 '''
 load_embeddings: loads SPECTER document embeddings and converts them into {id:vector} 
@@ -17,12 +22,21 @@ load_embeddings: loads SPECTER document embeddings and converts them into {id:ve
 @returns embedding dictionary {id:vector}, where id is document id string and vector is numpy array of vector
 '''
 def load_embeddings(embeddings_path):
+    index = CordIndex(METADATA_PATH)
     embeddings = {}
     with open(embeddings_path, 'r') as f:
         for line in tqdm(f, desc='reading embeddings from file...'):
             split_line = line.rstrip('\n').split(",")
-            embeddings[split_line[0]] =  np.array(split_line[1:]).astype(np.float)
+
+            # Keep only documents with PMCID 
+            pmcid = index.get_by_cord_uid(split_line[0])['pmcid']
+            if pmcid != '':
+                embeddings[pmcid] =  np.array(split_line[1:]).astype(np.float)
+
     return embeddings
+
+embeddings = load_embeddings(EMBEDDINGS_PATH)
+
 
 '''
 cos_sim: calculates the cosine similarity between two vectors 
@@ -38,7 +52,6 @@ def cos_sim(a,b):
     return np.divide(dot_prod, np.multiply(mag_a, mag_b))
 
 
-
 '''
 n_most_similar: finds and returns the top n most similar documents 
 @params 
@@ -49,16 +62,20 @@ n_most_similar: finds and returns the top n most similar documents
 '''
 def n_most_similar(embeddings, document_id, topn):
     nms = [{'id': '', 'similarity':-1}] * (topn + 1)
+
+    # convert PMC to CORD id
+    #cord_id = index.get_by_pmcid(document_id)['cord_uid']
+
     for document in embeddings.keys():
         similarity = cos_sim(embeddings[document],embeddings[document_id])
         if similarity > nms[0]['similarity']:
-            nms[0] = {'id': document, 'similarity': similarity}
+            nms[0] = {'pmcid': document, 'similarity': similarity}
             nms.sort(key=lambda tup: tup['similarity'])
     nms.sort(key=lambda tup: tup['similarity'], reverse=True)
     return nms[1:]
 
 
-embeddings = load_embeddings(EMBEDDINGS_PATH)
+
 
 
 '''
@@ -115,26 +132,30 @@ def on_message(ack: Callable[[],None], m: str) -> None:
     elif len(message.route) > 0:
         status = "OK"
         status_line = None
-        #if message.command == 'print':
-        #    print("[on_message] BODY: {}".format(message.body))
-        #    status = "printed"
-        #elif message.command == 'upper':
-        #    message.body = message.body.upper()
-        #    status = "uppercased"
-        #elif message.command == 'lower':
-        #    message.body = message.body.lower()
-        #    status = "lowercased"
+    
         if message.command == "similar":
-            default_similar = 10
             split_body = message.body.split(" ")
-            # TODO check for error in case of invalid message
-            document_id = split_body[0]
-            if len(split_body) == 1:
-                num_similar = default_similar
-            else:
-                num_similar = int(split_body[1])
-            message.body = "Processing " + document_id + " for " + str(num_similar) + " similar documents."
 
+            document_id = split_body[0]
+            
+            if len(split_body) == 1:
+                message.body = n_most_similar(embeddings, document_id, DEFAULT_NUM_SIMILAR)
+                status = "similar"
+
+            else:
+                try:
+                    num_similar = int(split_body[1])
+                except:
+                    status  = "ERROR"
+                    message.set("message", "Number of similar documents must be integer greater than 0 and less than '{}': '{}'".format(MAX_NUM_SIMILAR,split_body[1]))
+                else:
+                    if num_similar < 1 or num_similar > MAX_NUM_SIMILAR:
+                        status  = "ERROR"
+                        message.set("message", "Number of similar documents must be integer greater than 0 and less than '{}': Given '{}'".format(MAX_NUM_SIMILAR,split_body[1]))
+                    else:
+                        message.body = n_most_similar(embeddings, document_id, num_similar)
+                        status = "similar"
+            
         else:
             status = "ERROR"
             message.set("message", "Unknown command '{}'".format(message.command))
