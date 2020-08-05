@@ -137,8 +137,12 @@ def on_message(ack: Callable[[],None], m: str) -> None:
             split_body = message.body.split(" ")
 
             document_id = split_body[0]
+
+            if document_id not in embeddings.keys():
+                status  = "ERROR"
+                message.set("message", "Document ID not found (must be PMC id): Given '{}'".format(document_id))
             
-            if len(split_body) == 1:
+            elif len(split_body) == 1:
                 message.body = n_most_similar(embeddings, document_id, DEFAULT_NUM_SIMILAR)
                 status = "similar"
 
