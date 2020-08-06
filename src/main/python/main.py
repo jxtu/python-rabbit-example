@@ -1,6 +1,6 @@
 from typing import Callable
 from rabbit import *
-from flask import Flask, escape, request, abort
+from flask import Flask, escape, request, abort, make_response, jsonify
 from tqdm import tqdm
 from cord_index import *
 import sys
@@ -58,13 +58,10 @@ n_most_similar: finds and returns the top n most similar documents
     embeddings --> the loaded embedding file as {id:vector} dict
     document_id --> the PMC document id
     topn --> number of similar documents to be returned
-@returns array of most similar documents, by document id
+@returns json object of most similar documents, by document id
 '''
 def n_most_similar(embeddings, document_id, topn):
-    nms = [{'id': '', 'similarity':-1}] * (topn + 1)
-
-    # convert PMC to CORD id
-    #cord_id = index.get_by_pmcid(document_id)['cord_uid']
+    nms = [{'pmcid': '', 'similarity':-1}] * (topn + 1)
 
     for document in embeddings.keys():
         similarity = cos_sim(embeddings[document],embeddings[document_id])
@@ -72,11 +69,12 @@ def n_most_similar(embeddings, document_id, topn):
             nms[0] = {'pmcid': document, 'similarity': similarity}
             nms.sort(key=lambda tup: tup['similarity'])
     nms.sort(key=lambda tup: tup['similarity'], reverse=True)
-    return nms[1:]
+    documents = {'documents': nms[1:]} 
+    return documents
 
 
 
-
+# UPDATE WITH ERROR CATCHING AND NEW EMBEDDINGS
 
 '''
 Endpoint for Flask web service
@@ -89,21 +87,42 @@ def find_similar_documents(id):
         try:
             num_similar = int(request.args.get('n'))
         except:
-            abort(400)
+            response = make_response(
+                jsonify(
+                    {"message": "Number of similar documents must be integer greater than 0 and less than '{}': Given '{}'".format(MAX_NUM_SIMILAR,request.args.get('n')), "severity": "danger"}
+                ),
+                400,
+            )
+            response.headers["Content-Type"] = "application/json"
+            return response
     else:
-        num_similar = default_num_similar
+        num_similar = DEFAULT_NUM_SIMILAR
     
     # document id does not exist
     if id not in embeddings.keys():
-        abort(404)
+        response = make_response(
+                jsonify(
+                    {"message": "Document ID not found (must be PMC id): Given '{}'".format(id), "severity": "danger"}
+                ),
+                404,
+        )
+        response.headers["Content-Type"] = "application/json"
+        return response
 
     # number of requested similar documents is too large
-    elif num_similar > max_num_similar:
-        abort(400)
+    elif num_similar > MAX_NUM_SIMILAR:
+        response = make_response(
+                jsonify(
+                    {"message": "Number of similar documents must be integer greater than 0 and less than '{}': Given '{}'".format(MAX_NUM_SIMILAR,num_similar), "severity": "danger"}
+                ),
+                404,
+        )
+        response.headers["Content-Type"] = "application/json"
+        return response
 
     # returns JSON array of similar document IDs and cosine similarity
     else:
-        return str(n_most_similar(embeddings,id,num_similar))
+        return json.dumps(n_most_similar(embeddings,id,num_similar))
 
 
 
@@ -151,7 +170,7 @@ def on_message(ack: Callable[[],None], m: str) -> None:
                     num_similar = int(split_body[1])
                 except:
                     status  = "ERROR"
-                    message.set("message", "Number of similar documents must be integer greater than 0 and less than '{}': '{}'".format(MAX_NUM_SIMILAR,split_body[1]))
+                    message.set("message", "Number of similar documents must be integer greater than 0 and less than '{}': Given '{}'".format(MAX_NUM_SIMILAR,split_body[1]))
                 else:
                     if num_similar < 1 or num_similar > MAX_NUM_SIMILAR:
                         status  = "ERROR"
