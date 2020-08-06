@@ -1,6 +1,8 @@
 # Kevin's Notes
 
 ## General Notes
+As of right now, only documents with PMC IDs are considered
+
 
 The following variables should be specified at the top of main.py:
 
