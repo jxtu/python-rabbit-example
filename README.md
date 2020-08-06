@@ -5,13 +5,19 @@
 The following variables should be specified at the top of main.py:
 
 EMBEDDINGS_PATH => path to CORD-19 document embeddings
+
 METADATA_PATH => path to CORD-19 metadata.csv
+
 MAX_NUM_SIMILAR => maximum number of documents that are allowed to be returned
+
 DEFAULT_NUM_SIMILAR => default number of returned documents, in case user does not provide number
 
 
 ## Accessing via Flask Endpoint
-As URL: "../similar/<pmcid>?n=k"
+As URL: 
+```
+../similar/<pmcid>?n=k
+```
 
 where <pmcid> is the PMC document ID and k is an integer greater than 0 and less than MAX_NUM_SIMILAR. Note that k is optional and defaults to DEFAULT_NUM_SIMILAR
 
@@ -22,7 +28,10 @@ Returns a JSON object consisting of {pmcid:similarity} for each similar document
 Sends error response (400,404) with description is message body
 
 ## Accessing via RabbitMQ Endpoint
-In Java terminal: $> similar pmcid num_similar
+In Java terminal: 
+```
+$> similar pmcid num_similar
+```
 
 where pmcid is the PMC document ID and num_similar is integer greater than 0 and less than MAX_NUM_SIMILAR. Note that num_similar is optional and defaults to DEFAULT_NUM_SIMILAR
 
