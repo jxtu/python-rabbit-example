@@ -24,6 +24,7 @@ load_embeddings: loads SPECTER document embeddings and converts them into {id:ve
 def load_embeddings(embeddings_path):
     index = CordIndex(METADATA_PATH)
     embeddings = {}
+    no_pmc_count = 0
     with open(embeddings_path, 'r') as f:
         for line in tqdm(f, desc='reading embeddings from file...'):
             split_line = line.rstrip('\n').split(",")
@@ -32,6 +33,10 @@ def load_embeddings(embeddings_path):
             pmcid = index.get_by_cord_uid(split_line[0])['pmcid']
             if pmcid != '':
                 embeddings[pmcid] =  np.array(split_line[1:]).astype(np.float)
+            else:
+                no_pmc_count += 1
+    print(no_pmc_count)
+    print(len(embeddings))
 
     return embeddings
 
@@ -73,8 +78,43 @@ def n_most_similar(embeddings, document_id, topn):
     return documents
 
 
+def generate_error_response(errorType, requestType, params):
+    if requestType == 'JSON':
+        if errorType == "provided_number":
+            response = make_response(
+                    jsonify(
+                        {"message": "Number of similar documents must be integer greater than 0 and less than '{}': Given '{}'".format(params[0],params[1]), "severity": "danger"}
+                    ),
+                    400,
+                )
+            response.headers["Content-Type"] = "application/json"
+            return response
+        elif errorType == "missing_document":
+            response = make_response(
+                    jsonify(
+                        {"message": "Document ID not found (must be PMC id): Given '{}'".format(params[0]), "severity": "danger"}
+                    ),
+                    404,
+            )
+            response.headers["Content-Type"] = "application/json"
+            return response
+    if requestType == "HTML":
+        if errorType == "provided_number":
+            return "<h1>ERROR 400</h1><p>Number of similar documents must be integer greater than 0 and less than '{}': Given '{}'</p>".format(params[0],params[1]), 400
+        
+        if errorType == "missing_document":
+            return "<h1>ERROR 404</h1><p>Document ID not found (must be PMC id): Given '{}'</p>".format(params[0]), 404
 
-# UPDATE WITH ERROR CATCHING AND NEW EMBEDDINGS
+
+def html(results, id,num_similar):
+    return_string = "<h3>Displaying the {} most similar documents to {}</h3>".format(num_similar,id)
+    for document in results['documents']:
+        return_string += "<p>ID: {}, Similarity: {}</p>".format(document['pmcid'], document['similarity'])
+    return return_string
+
+
+
+
 
 '''
 Endpoint for Flask web service
@@ -82,47 +122,37 @@ Endpoint for Flask web service
 app = Flask(__name__)
 @app.route('/similar/<id>')
 def find_similar_documents(id):
+
+    if 'application/json' in request.headers.getlist('accept')[0].split(","):
+        requestType = "JSON"
+    else:
+        requestType = "HTML"
+
+
     if request.args.get('n'):
         # if user-provided number of similar documents (n) is not a number
         try:
             num_similar = int(request.args.get('n'))
         except:
-            response = make_response(
-                jsonify(
-                    {"message": "Number of similar documents must be integer greater than 0 and less than '{}': Given '{}'".format(MAX_NUM_SIMILAR,request.args.get('n')), "severity": "danger"}
-                ),
-                400,
-            )
-            response.headers["Content-Type"] = "application/json"
-            return response
+            return generate_error_response("provided_number", requestType, [MAX_NUM_SIMILAR,request.args.get('n')])
+             
     else:
         num_similar = DEFAULT_NUM_SIMILAR
     
     # document id does not exist
     if id not in embeddings.keys():
-        response = make_response(
-                jsonify(
-                    {"message": "Document ID not found (must be PMC id): Given '{}'".format(id), "severity": "danger"}
-                ),
-                404,
-        )
-        response.headers["Content-Type"] = "application/json"
-        return response
+        return generate_error_response("missing_document", requestType, [id])
 
     # number of requested similar documents is too large
     elif num_similar > MAX_NUM_SIMILAR:
-        response = make_response(
-                jsonify(
-                    {"message": "Number of similar documents must be integer greater than 0 and less than '{}': Given '{}'".format(MAX_NUM_SIMILAR,num_similar), "severity": "danger"}
-                ),
-                404,
-        )
-        response.headers["Content-Type"] = "application/json"
-        return response
+        return generate_error_response("provided_number", requestType, [MAX_NUM_SIMILAR,num_similar])
 
-    # returns JSON array of similar document IDs and cosine similarity
+
     else:
-        return json.dumps(n_most_similar(embeddings,id,num_similar))
+        if requestType == "JSON":
+            return json.dumps(n_most_similar(embeddings,id,num_similar))
+        if requestType == "HTML":
+            return html(n_most_similar(embeddings,id,num_similar),id,num_similar)
 
 
 
