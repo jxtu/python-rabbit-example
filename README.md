@@ -24,10 +24,10 @@ As URL:
 where <pmcid> is the PMC document ID and k is an integer greater than 0 and less than MAX_NUM_SIMILAR. Note that k is optional and defaults to DEFAULT_NUM_SIMILAR
 
 ### On Success
-Returns a JSON object consisting of {pmcid:similarity} for each similar document
+Returns HTML consisting of pmcid and similarity for each similar document
 
 ### On Failure
-Sends error response (400,404) with description is message body
+Returns HTML error page response (400,404) with description 
 
 ## Accessing via RabbitMQ Endpoint
 In Java terminal: 
