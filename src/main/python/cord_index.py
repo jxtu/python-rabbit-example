@@ -1,23 +1,25 @@
 import csv
 
 # Keys for the columns with ID values we are interested in.
-CORD_UID = 'cord_uid'
-PMCID = 'pmcid'
-SHA = 'sha'
+CORD_UID = "cord_uid"
+PMCID = "pmcid"
+SHA = "sha"
+
 
 class CordIndex(object):
-    '''
+    """
     Parses the metadata.csv file included with each CORD-19 dataset and
     provides mappings between the various ID types.  Currently only the
     CORD-UID, SHA, and PMCID are supported.  The DOI and PMID are ignored
     for now.
-    '''
+    """
+
     def __init__(self, metadata_path):
         self.uid_index = dict()
         self.sha_index = dict()
         self.pmcid_index = dict()
         print("Loading metadata from " + metadata_path)
-        with open(metadata_path, 'r') as csv_file:
+        with open(metadata_path, "r") as csv_file:
             # csv.reader(csv_file).next()
             rows = list(csv.reader(csv_file))
             keys = rows[0]
@@ -32,7 +34,7 @@ class CordIndex(object):
 
     def add_to_index(self, record, column):
         key = record[column]
-        if key != '':
+        if key != "":
             if column == CORD_UID:
                 self.uid_index[key] = record
             elif column == PMCID:

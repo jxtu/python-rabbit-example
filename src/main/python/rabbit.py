@@ -5,17 +5,24 @@ import jsons
 
 PERSIST = pika.BasicProperties(delivery_mode=2)
 
+
 class Connection(object):
     """
     Manage a connection to the RabbitMQ server.
     """
-    def __init__(self, host="localhost", username="guest", password="guest", port=5672, virtual_host="/"):
 
+    def __init__(
+        self,
+        host="localhost",
+        username="guest",
+        password="guest",
+        port=5672,
+        virtual_host="/",
+    ):
         credentials = pika.PlainCredentials(username, password)
-        self.parameters = pika.ConnectionParameters(host,
-                                                    port,
-                                                    virtual_host,
-                                                    credentials)
+        self.parameters = pika.ConnectionParameters(
+            host, port, virtual_host, credentials
+        )
         # self.connection = pika.BlockingConnection(parameters)
 
     def connect(self):
@@ -37,12 +44,17 @@ class InBox(object):
     TODO: It should be possible to configure the durable and auto_delete
           properties of the queue and exchange.
     """
+
     def __init__(self, queue_name, connection, exchange="askme", fair=False):
         self.queue_name = queue_name
         self.connection = connection.connect()
         self.channel = self.connection.channel()
-        self.channel.exchange_declare(exchange=exchange, exchange_type="direct", auto_delete=False)
-        self.queue = self.channel.queue_declare(queue=queue_name, durable=True, auto_delete=False)
+        self.channel.exchange_declare(
+            exchange=exchange, exchange_type="direct", auto_delete=False
+        )
+        self.queue = self.channel.queue_declare(
+            queue=queue_name, durable=True, auto_delete=False
+        )
         self.channel.queue_bind(queue=self.queue.method.queue, exchange=exchange)
         if fair:
             self.channel.basic_qos(prefetch_count=1)
@@ -57,9 +69,11 @@ class InBox(object):
         Messages that are not acknowledged will be redelivered by the server
         until a receiver acknowledges the message.
         """
+
         def handler(channel, method, properties, body):
             def ack():
                 self.ack(method)
+
             callback(ack, body.decode("utf-8"))
 
         self.channel.basic_consume(queue=self.queue_name, on_message_callback=handler)
@@ -77,6 +91,7 @@ class InBox(object):
 
 class PostOffice(object):
     """ Send messages to message queues on the given exchange."""
+
     def __init__(self, connection, exchange="askme"):
         self.connection = connection.connect()
         self.channel = self.connection.channel()
@@ -86,10 +101,14 @@ class PostOffice(object):
         if message is None:
             self._dispatch(target)
         elif isinstance(message, str):
-            self.channel.basic_publish(self.exchange, routing_key=target, body=message, properties=PERSIST)
+            self.channel.basic_publish(
+                self.exchange, routing_key=target, body=message, properties=PERSIST
+            )
         else:
             s = jsons.dumps(message)
-            self.channel.basic_publish(self.exchange, routing_key=target, body=s, properties=PERSIST)
+            self.channel.basic_publish(
+                self.exchange, routing_key=target, body=s, properties=PERSIST
+            )
 
     def close(self):
         self.connection.close()
@@ -118,7 +137,9 @@ class PostOffice(object):
             payload = jsons.dumps(msg)
 
         if target is not None:
-            self.channel.basic_publish(self.exchange, routing_key=target, body=payload, properties=PERSIST)
+            self.channel.basic_publish(
+                self.exchange, routing_key=target, body=payload, properties=PERSIST
+            )
         else:
             print("No target for message")
 
@@ -139,6 +160,7 @@ class Message(object):
     route: list
         The list of message queues this message should be sent to.
     """
+
     def __init__(self, command=None, body=None, *route):
         if command is None:
             self.id = uuid.uuid4()
@@ -158,7 +180,7 @@ class Message(object):
             self.__dict__ = command.__dict__
         elif type(command) == str and body is None:
             d = json.loads(command)
-            self.__dict__ = d # jsons.load(command)
+            self.__dict__ = d  # jsons.load(command)
             if "parameters" not in self.__dict__:
                 self.parameters = dict()
         else:
