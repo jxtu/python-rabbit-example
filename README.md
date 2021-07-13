@@ -36,6 +36,14 @@ To run the `main.py` program from the command line its requirements will have to
 $> pip install -r requirements.txt
 ```
 
+## Building the Elasticsearch Module
+
+After the Docker container is build, an ES engine will be fire up and ingested with sample data.
+```shell
+$> cd src/main/python-elasticsearch
+$> docker-compose -f docker-compose.yml up --build -d
+```
+
 ## Running 
 
 Before running the Java/Groovy and Python modules a RabbitMQ server needs to be started.  For simplicity we will use the Docker container provided by RabbitMQ with the default user (*guest*) and password (*guest*) 
@@ -61,8 +69,10 @@ $> java -jar rabbit-groovy.jar
 Or to run the Docker containers:
 
 Python:
+
+The argument `--network` ensures that RabbitMQ Python container and ES can communicate.
 ``` 
-$> docker run -it rabbit-python
+$> docker run --network mynetwork -it rabbit-python
 ```
 
 Java/Groovy:
@@ -108,6 +118,47 @@ $> tokenize hello world
     "message" : "Unknown command 'tokenize'",
     "status" : "ERROR"
   }
+  
+$> transform What is the effect of chloroquine on SARS-Cov-2 replication?
+{
+  "id" : "279f6fc9-8c18-41ef-8b1b-06e155e5ac69",
+  "command" : "transform",
+  "body" : "effect chloroquine coronavirus covid sars-cov-2 replication",
+  "route" : [ ],
+  "parameters" : {
+    "status" : "OK"
+  }
+}
+  
+$> search immune treatment options
+{
+  "id" : "eddac50f-481b-4c64-8145-801fe6935b08",
+  "command" : "search",
+  "body" : {
+    "0" : {
+      "Id" : "94",
+      "Score" : 11.23,
+      "PMC" : "PMC1871602",
+      "Title" : "Immune reconstitution inflammatory syndrome (IRIS): review of common infectious manifestations and treatment options"
+    },
+    "1" : {
+      "Id" : "39",
+      "Score" : 5.07,
+      "PMC" : "PMC1287064",
+      "Title" : "An ontology for immune epitopes: application to the design of a broad scope database of immune reactivities"
+    },
+    "2" : {
+      "Id" : "32",
+      "Score" : 4.06,
+      "PMC" : "PMC1090610",
+      "Title" : "GIDEON: a comprehensive Web-based resource for geographic medicine"
+    },
+  },
+  "route" : [ ],
+  "parameters" : {
+    "status" : "OK"
+  }
+}
 }
 ```
 
