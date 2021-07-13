@@ -3,6 +3,8 @@ from rabbit import *
 import sys
 
 from query_processor import SimpleQueryProcessor
+from run_query import search
+from elasticsearch_dsl.connections import connections  # type: ignore
 
 connection = None
 inbox = None
@@ -10,6 +12,7 @@ po = None
 
 stopwords_file_path = "stopwords.txt"
 query_processor = SimpleQueryProcessor(stopwords_file_path)
+connections.create_connection(hosts=["es01:9200"], timeout=100, alias="default")
 
 
 # Callback to be called when a message arrives on the message queue named
@@ -42,6 +45,8 @@ def on_message(ack: Callable[[], None], m: str) -> None:
             status = "lowercased"
         elif message.command == "transform":
             message.body = query_processor(message.body)
+        elif message.command == "search":
+            message.body = search(message.body)
         else:
             status = "ERROR"
             message.set("message", "Unknown command '{}'".format(message.command))
