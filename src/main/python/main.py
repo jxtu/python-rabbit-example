@@ -46,7 +46,7 @@ def on_message(ack: Callable[[], None], m: str) -> None:
         elif message.command == "transform":
             message.body = query_processor(message.body)
         elif message.command == "search":
-            message.body = search(message.body)
+            message.body = search(message.body, index="articles")
         else:
             status = "ERROR"
             message.set("message", "Unknown command '{}'".format(message.command))

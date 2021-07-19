@@ -14,9 +14,9 @@ def search(
         :top_k
     ]  # initialize a query and return top k results
     response = s.execute()
-    res_keys = ("Id", "Score", "PMC", "Title")
+    res_keys = ("Id", "Score", "Title")
     result = {}
     for i, hit in enumerate(response):
-        content = (hit.meta.id, round(hit.meta.score, 2), hit.pmc, hit.title)
+        content = (hit.meta.id, round(hit.meta.score, 2), hit.title)
         result[i] = {k: v for k, v in zip(res_keys, content)}
     return result
