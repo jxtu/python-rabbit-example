@@ -61,6 +61,11 @@ def on_message(ack: Callable[[], None], m: str) -> None:
     print("[on_message] Done")
 
 
+def on_message_todo(ack: Callable[[], None], m: str) -> None:
+    # TODO: implement it in the future to send and receive messages from ES
+    raise NotImplementedError
+
+
 def run():
     # Register our message handler and wait for messages.
     inbox.register(on_message)
@@ -73,16 +78,19 @@ def run():
 
 
 if __name__ == "__main__":
-    host = "localhost"
-    username = "guest"
-    password = "guest"
+    host = "rabbitmq.lappsgrid.org"
+    username = "askme"
+    password = "askme"
+    port = 5672
+    virtual_host = "askme"
     if len(sys.argv) == 4:
         host = sys.argv[1]
         username = sys.argv[2]
         password = sys.argv[3]
 
-    connection = Connection(host, username, password)
-    inbox = InBox("python_queue", connection)
-    po = PostOffice(connection)
+    connection = Connection(host, username, password, virtual_host=virtual_host)
+    # change the queue name to receive different messages
+    inbox = InBox(queue_name="ranking.mailbox", connection=connection, exchange="jingxuan")
+    po = PostOffice(connection, exchange="jingxuan")
 
     run()

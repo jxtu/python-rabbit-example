@@ -45,7 +45,7 @@ class InBox(object):
           properties of the queue and exchange.
     """
 
-    def __init__(self, queue_name, connection, exchange="askme", fair=False):
+    def __init__(self, queue_name, connection, exchange, fair=False):
         self.queue_name = queue_name
         self.connection = connection.connect()
         self.channel = self.connection.channel()
@@ -92,7 +92,7 @@ class InBox(object):
 class PostOffice(object):
     """ Send messages to message queues on the given exchange."""
 
-    def __init__(self, connection, exchange="askme"):
+    def __init__(self, connection, exchange):
         self.connection = connection.connect()
         self.channel = self.connection.channel()
         self.exchange = exchange
