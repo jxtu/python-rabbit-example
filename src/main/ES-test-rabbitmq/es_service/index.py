@@ -18,7 +18,7 @@ class ESIndex(object):
         :param docs: wapo docs to be loaded
         """
         # set an elasticsearch connection to your localhost
-        connections.create_connection(hosts=["localhost:9200"], timeout=100, alias="default")
+        connections.create_connection(hosts=["es01:9200"], timeout=100, alias="default")
         self.index = index_name
         es_index = Index(self.index)  # initialize the index
 
