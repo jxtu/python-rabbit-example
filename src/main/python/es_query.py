@@ -6,9 +6,9 @@ from elasticsearch_dsl.query import MultiMatch, Ids  # type: ignore
 
 
 def search(
-    query: str, index: str = "docker_test_index", top_k: int = 5
+    query: str, index: str = "test_rabbitmq_idx", top_k: int = 5
 ) -> Dict[int, Dict[str, str]]:
-    q_multi = MultiMatch(query=query, fields=["title", "abstract"])
+    q_multi = MultiMatch(query=query, fields=["title_str", "abstract_str"])
 
     s = Search(using="default", index=index).query(q_multi)[
         :top_k
@@ -20,3 +20,11 @@ def search(
         content = (hit.meta.id, round(hit.meta.score, 2), hit.title)
         result[i] = {k: v for k, v in zip(res_keys, content)}
     return result
+
+
+def run_query(query_dict: Dict) -> Dict:
+    query = " ".join(query_dict["body"]["query"]["terms"])
+    # TODO: search ES based on the query
+    docs = []  # retrieved docs
+    query_dict["body"]["documents"] = docs
+    return query_dict
