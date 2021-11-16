@@ -1,9 +1,10 @@
+import json
 from typing import Callable
 from rabbit import *
 import sys
 
 from query_processor import SimpleQueryProcessor
-from run_query import search
+from es_query import run_query
 from elasticsearch_dsl.connections import connections  # type: ignore
 
 connection = None
@@ -12,20 +13,22 @@ po = None
 
 stopwords_file_path = "stopwords.txt"
 query_processor = SimpleQueryProcessor(stopwords_file_path)
-connections.create_connection(hosts=["es01:9200"], timeout=100, alias="default")
+# connections.create_connection(hosts=["es01:9200"], timeout=100, alias="default")
+connections.create_connection(hosts=["localhost:9200"], timeout=100, alias="default")
 
 
 # Callback to be called when a message arrives on the message queue named
 # "task_queue"
 def on_message(ack: Callable[[], None], m: str) -> None:
-    print(str(m))
     if type(m) == str:
         print("[on_message] message is a string")
     else:
         print("Message is a {}".format(type(m)))
 
     ack()  # ALWAYS call ack() to acknowledge the message was received.
+
     message = Message(m)
+    message.command = "search"
     print("[on_message] Message ID: {}".format(message.id))
     if message.command == "HALT":
         # Clean shutdown.  This will cause the `inbox.start()` below to exit.
@@ -46,7 +49,7 @@ def on_message(ack: Callable[[], None], m: str) -> None:
         elif message.command == "transform":
             message.body = query_processor(message.body)
         elif message.command == "search":
-            message.body = search(message.body, index="articles")
+            message.body = run_query(message.body, index="test_rabbitmq_idx")
         else:
             status = "ERROR"
             message.set("message", "Unknown command '{}'".format(message.command))
@@ -90,7 +93,7 @@ if __name__ == "__main__":
 
     connection = Connection(host, username, password, virtual_host=virtual_host)
     # change the queue name to receive different messages
-    inbox = InBox(queue_name="ranking.mailbox", connection=connection, exchange="jingxuan")
+    inbox = InBox(queue_name="solr.mailbox", connection=connection, exchange="jingxuan")
     po = PostOffice(connection, exchange="jingxuan")
 
     run()
