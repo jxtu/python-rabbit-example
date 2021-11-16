@@ -1,0 +1,8 @@
+docker compose -f askme.yml up
+
+cd ES-test-rabbitmq
+docker-compose -f docker-compose.yml up --build -d
+
+cd python
+pip install -r requirements.txt
+python main.py

@@ -1,0 +1,37 @@
+version: '3.3'
+services:
+  query:
+    image: docker.lappsgrid.org/askme/query:1.0.1-SNAPSHOT
+    secrets:
+      - askme.ini
+    networks:
+      - compose_shared_network      
+  ranking:
+    image: docker.lappsgrid.org/askme/ranking:1.0.1
+    secrets:
+      - askme.ini
+    networks:
+      - compose_shared_network
+  # solr:
+  #   image: docker.lappsgrid.org/askme/solr:1.1.0-SNAPSHOT   
+  #   secrets:
+  #     - askme.ini
+  #   networks:
+  #     - compose_shared_network
+  web:
+    image: docker.lappsgrid.org/askme/web:1.7.0-SNAPSHOT
+    ports:
+      - 8080:8080
+    secrets:
+      - askme.ini
+    networks:
+      - compose_shared_network
+    
+networks:
+  compose_shared_network:
+    external: true
+
+secrets:
+  askme.ini:
+    file: askme.ini
+
