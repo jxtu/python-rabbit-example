@@ -9,6 +9,9 @@ This will fire up the remote rabbitmq and original askme components
 including web interface, query transformation and documents ranking.
 The webpage can be accessed via http://localhost:8080/ask.
 
+> NOTE: the AskMe modules are connected via the RabbitMQ instance that is running on a remote server, so you might not be able to
+run it because of the firewall.
+
 ## Building the Elasticsearch Module
 ```shell
 $> cd ES-test-rabbitmq
